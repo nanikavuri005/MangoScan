@@ -74,6 +74,25 @@ docker compose up --build
 
 This gives each farmer both disease name and actionable practices.
 
+
+## Improving wrong predictions
+
+If predictions are wrong on some images, MangoScan now returns:
+- `lowConfidence` flag when score is below threshold
+- `topPredictions` (top-3 labels with confidence)
+- `rawPrediction` + normalized final `diagnosis`
+
+You can tune the threshold via AI service env var:
+
+```bash
+MIN_CONFIDENCE=0.65
+```
+
+For better accuracy:
+1. Train with more epochs and image augmentations.
+2. Ensure dataset class names are clean and consistent.
+3. Capture clear leaf close-ups in daylight (single leaf per image).
+
 ## Quick start (Docker)
 
 ```bash

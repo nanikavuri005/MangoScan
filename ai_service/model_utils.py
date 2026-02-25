@@ -42,13 +42,21 @@ def load_model_and_classes():
     return model, classes
 
 
-def predict_disease(model, classes: list[str], image: Image.Image) -> Tuple[str, float]:
+def predict_disease(model, classes: list[str], image: Image.Image) -> Tuple[str, float, list[dict]]:
     tensor = TRANSFORM(image.convert("RGB")).unsqueeze(0)
     with torch.no_grad():
         logits = model(tensor)
-        probs = torch.softmax(logits, dim=1)
-        confidence, idx = torch.max(probs, dim=1)
+        probs = torch.softmax(logits, dim=1).squeeze(0)
+
+    confidence, idx = torch.max(probs, dim=0)
+    top_k = min(3, probs.numel())
+    top_values, top_indices = torch.topk(probs, k=top_k)
+
+    top_predictions = []
+    for score, class_idx in zip(top_values.tolist(), top_indices.tolist()):
+        label = classes[class_idx] if class_idx < len(classes) else f"class_{class_idx}"
+        top_predictions.append({"label": label, "confidence": round(float(score), 4)})
 
     class_idx = int(idx.item())
     disease = classes[class_idx] if class_idx < len(classes) else f"class_{class_idx}"
-    return disease, float(confidence.item())
+    return disease, float(confidence.item()), top_predictions
