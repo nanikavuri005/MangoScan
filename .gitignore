@@ -8,5 +8,10 @@ ai_service/.pytest_cache
 __pycache__/
 *.pyc
 
+# Trained artifacts / local datasets
+ai_service/model/*.pt
+ai_service/model/classes.txt
+data/
+
 # OS
 .DS_Store

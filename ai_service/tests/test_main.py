@@ -1,4 +1,5 @@
 from io import BytesIO
+
 from fastapi.testclient import TestClient
 from PIL import Image
 
@@ -17,10 +18,12 @@ def build_image_bytes(color=(20, 160, 20)):
 def test_health():
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    body = response.json()
+    assert body["status"] == "ok"
+    assert "model_loaded" in body
 
 
-def test_analyze_accepts_image():
+def test_analyze_accepts_image_and_returns_practices():
     data = build_image_bytes()
     response = client.post(
         "/analyze",
@@ -30,6 +33,8 @@ def test_analyze_accepts_image():
     body = response.json()
     assert "diagnosis" in body
     assert "confidence" in body
+    assert "practices" in body
+    assert isinstance(body["practices"], list)
 
 
 def test_analyze_rejects_non_image_content_type():

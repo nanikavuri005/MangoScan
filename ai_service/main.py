@@ -1,43 +1,37 @@
 from io import BytesIO
-from fastapi import FastAPI, File, UploadFile, HTTPException
+
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image, ImageStat, UnidentifiedImageError
 
-app = FastAPI(title="MangoScan AI Service", version="1.1.0")
+from disease_practices import practices_for
+from model_utils import load_model_and_classes, predict_disease
+
+app = FastAPI(title="MangoScan AI Service", version="2.0.0")
+
+MODEL, CLASSES = load_model_and_classes()
 
 
-def simple_disease_inference(image: Image.Image) -> dict:
-    """Demo inference strategy based on average RGB values."""
+def fallback_inference(image: Image.Image) -> tuple[str, float]:
+    """Fallback heuristic used if a trained model is unavailable."""
     rgb_image = image.convert("RGB")
     stats = ImageStat.Stat(rgb_image)
     avg_r, avg_g, avg_b = stats.mean[:3]
 
     if avg_g > avg_r + 8 and avg_g > avg_b:
-        return {
-            "diagnosis": "Healthy",
-            "confidence": 0.87,
-            "recommendedAction": "Continue current irrigation and monitoring schedule.",
-            "modelVersion": "demo-v1",
-        }
-
+        return "Healthy", 0.70
     if avg_r > avg_g + 5:
-        return {
-            "diagnosis": "Anthracnose (suspected)",
-            "confidence": 0.79,
-            "recommendedAction": "Remove infected leaves and apply copper-based fungicide.",
-            "modelVersion": "demo-v1",
-        }
-
-    return {
-        "diagnosis": "Powdery Mildew (suspected)",
-        "confidence": 0.74,
-        "recommendedAction": "Improve airflow and apply sulfur spray as advised.",
-        "modelVersion": "demo-v1",
-    }
+        return "Anthracnose", 0.65
+    return "Powdery Mildew", 0.62
 
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "mangoscan-ai"}
+    return {
+        "status": "ok",
+        "service": "mangoscan-ai",
+        "model_loaded": MODEL is not None,
+        "num_classes": len(CLASSES),
+    }
 
 
 @app.post("/analyze")
@@ -52,8 +46,21 @@ async def analyze(image: UploadFile = File(...)):
     try:
         pil_image = Image.open(BytesIO(data))
         pil_image.verify()
-        pil_image = Image.open(BytesIO(data))
+        pil_image = Image.open(BytesIO(data)).convert("RGB")
     except UnidentifiedImageError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
 
-    return simple_disease_inference(pil_image)
+    if MODEL is not None and CLASSES:
+        disease, confidence = predict_disease(MODEL, CLASSES, pil_image)
+        model_version = "kaggle-mango-resnet18-v1"
+    else:
+        disease, confidence = fallback_inference(pil_image)
+        model_version = "fallback-heuristic-v1"
+
+    return {
+        "diagnosis": disease,
+        "confidence": round(confidence, 4),
+        "recommendedAction": " ; ".join(practices_for(disease)),
+        "practices": practices_for(disease),
+        "modelVersion": model_version,
+    }

@@ -24,6 +24,10 @@ const analysisSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    practices: {
+      type: [String],
+      default: []
+    },
     modelVersion: {
       type: String,
       default: 'demo-v1'

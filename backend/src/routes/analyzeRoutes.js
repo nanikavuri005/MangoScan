@@ -33,7 +33,8 @@ router.post('/', requireAuth, upload.single('image'), async (req, res) => {
       diagnosis: aiResult.diagnosis,
       confidence: aiResult.confidence,
       recommendedAction: aiResult.recommendedAction,
-      modelVersion: aiResult.modelVersion || 'demo-v1'
+      modelVersion: aiResult.modelVersion || 'demo-v1',
+      practices: Array.isArray(aiResult.practices) ? aiResult.practices : []
     });
 
     return res.status(201).json({
@@ -41,6 +42,7 @@ router.post('/', requireAuth, upload.single('image'), async (req, res) => {
       diagnosis: analysis.diagnosis,
       confidence: analysis.confidence,
       recommendedAction: analysis.recommendedAction,
+      practices: analysis.practices,
       createdAt: analysis.createdAt
     });
   } catch (error) {
