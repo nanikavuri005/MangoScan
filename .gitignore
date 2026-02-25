@@ -1,0 +1,12 @@
+# Node
+backend/node_modules
+backend/.env
+
+# Python
+ai_service/.venv
+ai_service/.pytest_cache
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
